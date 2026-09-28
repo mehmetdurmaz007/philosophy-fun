@@ -9,7 +9,8 @@ export const DATA_FILES = {
   ],
   traditions: [
     'traditions-v2-00.b64',
-    't01000-0.b64','t010001-0.b64','t010001-1.b64','t01-0-1.b64','t01-1.b64','t01-2.b64',
+    't01000-0.b64','t010001-0.b64','t010001-1.b64','t0100-1a.b64','t0100-1b.b64',
+    't01-0-1.b64','t01-1.b64','t01-2.b64',
     ...Array.from({ length: 8 }, (_, i) => `traditions-v2-${String(i + 2).padStart(2, '0')}.b64`)
   ]
 } as const
