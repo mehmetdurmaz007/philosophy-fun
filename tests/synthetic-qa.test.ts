@@ -3,7 +3,7 @@ import { gunzipSync } from 'node:zlib'
 import { readFileSync } from 'node:fs'
 import { DATA_FILES } from '../src/data'
 import { FORM_ORDER, availableItems, formRank } from '../src/forms'
-import { interleavedOrder } from '../src/order'
+import { administrationGroup, interleavedOrder } from '../src/order'
 import { scoreSession } from '../src/scoring'
 import { rankPhilosophers, rankTraditions } from '../src/matcher'
 import type { AnswerRecord, QuestionnaireData, PhilosopherData, TraditionData } from '../src/types'
@@ -71,7 +71,10 @@ describe('synthetic alpha QA',()=>{
     expect(a).not.toEqual(c)
     expect(new Set(a)).toEqual(new Set(items.map(i=>i.item_id)))
     const map=new Map(items.map(i=>[i.item_id,i]))
-    for(let i=1;i<a.length;i++) expect(map.get(a[i])?.construct_id).not.toBe(map.get(a[i-1])?.construct_id)
+    for(let i=1;i<a.length;i++){
+      const current=map.get(a[i]); const previous=map.get(a[i-1])
+      expect(current&&previous?administrationGroup(current):'').not.toBe(current&&previous?administrationGroup(previous):'')
+    }
   })
 
   it('keeps a fully neutral respondent at the genuine midpoint',()=>{

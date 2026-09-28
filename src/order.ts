@@ -20,6 +20,10 @@ function rngFromSeed(seed: string) {
   }
 }
 
+export function administrationGroup(item:QuestionnaireItem){
+  return item.layer==='method_profile' ? `METHOD:${item.method}` : `CONSTRUCT:${item.construct_id}`
+}
+
 export function interleavedOrder(items: QuestionnaireItem[], seed: string): string[] {
   const rng = rngFromSeed(seed)
   const shuffled = [...items]
@@ -27,10 +31,12 @@ export function interleavedOrder(items: QuestionnaireItem[], seed: string): stri
     const j = Math.floor(rng() * (i + 1))
     ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
   }
-  // Greedily avoid adjacent items from the same construct when alternatives exist.
+  // Greedily avoid adjacent items from the same administration group when alternatives exist.
+  // Method-profile items are independent methods even though the frozen bank shares one construct_id.
   for (let i = 1; i < shuffled.length; i++) {
-    if (shuffled[i].construct_id === shuffled[i - 1].construct_id) {
-      const swap = shuffled.findIndex((x, idx) => idx > i && x.construct_id !== shuffled[i - 1].construct_id)
+    if (administrationGroup(shuffled[i]) === administrationGroup(shuffled[i - 1])) {
+      const previous=administrationGroup(shuffled[i - 1])
+      const swap = shuffled.findIndex((x, idx) => idx > i && administrationGroup(x) !== previous)
       if (swap > i) [shuffled[i], shuffled[swap]] = [shuffled[swap], shuffled[i]]
     }
   }
