@@ -3,7 +3,7 @@ import type { PhilosopherData, QuestionnaireData, TraditionData } from './types'
 export const DATA_FILES = {
   questionnaire: Array.from({ length: 8 }, (_, i) => `questionnaire-v2-${String(i).padStart(2, '0')}.b64`),
   philosophers: [
-    'p00-0.b64','p0010-0.b64','p0010-1.b64','p00-2.b64',
+    'p00-0.b64','p0010-0.b64','p0010-1.b64','p00-1-1.b64','p00-2.b64',
     'p01-0.b64','p01-1.b64','p01-2.b64',
     ...Array.from({ length: 6 }, (_, i) => `philosophers-v2-${String(i + 2).padStart(2, '0')}.b64`)
   ],
