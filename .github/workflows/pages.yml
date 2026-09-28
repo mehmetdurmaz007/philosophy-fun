@@ -2,7 +2,7 @@ name: Deploy alpha to GitHub Pages
 
 on:
   push:
-    branches: [feat/alpha-app]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
