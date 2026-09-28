@@ -42,14 +42,23 @@ export default function App(){
     const defaultModules=Object.entries(data.questionnaire.optional_modules).filter(([,m])=>m.default_in.includes(form)).map(([id])=>id)
     const seed=`${Date.now()}-${Math.random().toString(36).slice(2)}`
     const chosen=availableItems(data.questionnaire,form,defaultModules)
-    const next:SessionState={version:1,form,modules:defaultModules,seed,order:interleavedOrder(chosen,seed),cursor:0,answers:{},startedAt:new Date().toISOString()}
+    const next:SessionState={version:2,form,modules:defaultModules,skippedModules:[],seed,order:interleavedOrder(chosen,seed),cursor:0,answers:{},startedAt:new Date().toISOString()}
     setSession(next); setView('quiz')
   }
-  function setModules(form:FormId,modules:string[]){
+  function setModules(form:FormId,modules:string[],skippedModules:string[]){
     if(!data)return
-    const seed=session?.form===form?session.seed:`${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const sameForm=session?.form===form
+    const seed=sameForm&&session?session.seed:`${Date.now()}-${Math.random().toString(36).slice(2)}`
     const chosen=availableItems(data.questionnaire,form,modules)
-    setSession({version:1,form,modules,seed,order:interleavedOrder(chosen,seed),cursor:0,answers:{},startedAt:new Date().toISOString()})
+    const preserved=session?.answers??{}
+    const order=interleavedOrder(chosen,seed)
+    const firstUnanswered=order.findIndex(id=>!preserved[id])
+    setSession({
+      version:2,form,modules,skippedModules,seed,order,
+      cursor:firstUnanswered>=0?firstUnanswered:Math.max(0,order.length-1),
+      answers:preserved,
+      startedAt:sameForm&&session?session.startedAt:new Date().toISOString()
+    })
   }
   function answer(value:number|null,missing:'ANSWERED'|'USER_UNSURE'){
     if(!session||!current)return
@@ -77,8 +86,8 @@ export default function App(){
   }
 
   if(view==='quiz'&&session&&current){
-    const answered=Object.keys(session.answers).length
-    const progress=Math.round((answered/items.length)*100)
+    const answered=items.filter(i=>Boolean(session.answers[i.item_id])).length
+    const progress=items.length?Math.round((answered/items.length)*100):0
     const optionalEntries=Object.entries(data.questionnaire.optional_modules).filter(([,m])=>formRank(session.form)>=formRank(m.available_from))
     return <main className="quiz-shell">
       <header className="quiz-header"><button className="ghost" onClick={()=>setView('home')}>← Home</button><div className="progress-wrap"><div className="progress-copy"><span>{session.form}</span><span>{answered}/{items.length} · {progress}%</span></div><div className="progress"><i style={{width:`${progress}%`}}/></div></div><button className="ghost" onClick={finish}>Results</button></header>
@@ -89,7 +98,7 @@ export default function App(){
         <div className="answer-tools"><button className="secondary" onClick={()=>answer(null,'USER_UNSURE')}>{current.layer==='method_profile'?'Insufficiently familiar':'Unsure / cannot judge'}</button><button className="ghost" onClick={skip}>Skip</button></div>
         <div className="nav"><button disabled={session.cursor===0} onClick={()=>setSession({...session,cursor:Math.max(0,session.cursor-1)})}>← Previous</button><span>Item {session.cursor+1} of {items.length}</span><button disabled={session.cursor>=items.length-1} onClick={()=>setSession({...session,cursor:Math.min(items.length-1,session.cursor+1)})}>Next →</button></div>
       </section>
-      {optionalEntries.length>0&&<details className="modules"><summary>Specialist modules</summary><p>Modules are separate from the common worldview score. Skipping one is not a neutral answer.</p>{optionalEntries.map(([id,m])=><label key={id}><input type="checkbox" checked={session.modules.includes(id)} onChange={(e:{target:{checked:boolean}})=>{const mods=e.target.checked?[...session.modules,id]:session.modules.filter(x=>x!==id); if(confirm('Changing modules restarts this form so the saved item order remains coherent. Continue?'))setModules(session.form,mods)}}/><span><strong>{id.replace(/^[AR]_/, '').replaceAll('_',' ')}</strong><small>{m.item_count} items · {m.reason}</small></span></label>)}</details>}
+      {optionalEntries.length>0&&<details className="modules"><summary>Specialist modules</summary><p>Modules are separate from the common worldview score. Skipping one is recorded separately; changing modules preserves stored answers and only changes what is currently administered.</p>{optionalEntries.map(([id,m])=><label key={id}><input type="checkbox" checked={session.modules.includes(id)} onChange={(e:{target:{checked:boolean}})=>{const enabled=e.target.checked; const mods=enabled?[...new Set([...session.modules,id])]:session.modules.filter(x=>x!==id); const skipped=enabled?session.skippedModules.filter(x=>x!==id):[...new Set([...session.skippedModules,id])]; setModules(session.form,mods,skipped)}}/><span><strong>{id.replace(/^[AR]_/, '').replaceAll('_',' ')}</strong><small>{m.item_count} items · {m.reason}{session.skippedModules.includes(id)?' · deliberately skipped':''}</small></span></label>)}</details>}
     </main>
   }
 
@@ -98,7 +107,7 @@ export default function App(){
     const scores=scoreSession(data.questionnaire,administered,session.answers,session.form)
     const philosophers=rankPhilosophers(scores,data.philosophers.profiles).slice(0,10)
     const traditions=rankTraditions(scores,data.traditions.traditions).slice(0,8)
-    return <Results scores={scores} philosopherMatches={philosophers} traditionMatches={traditions} form={session.form} answered={Object.keys(session.answers).length} total={administered.length} onBack={()=>setView('quiz')} onReset={reset}/>
+    return <Results scores={scores} philosopherMatches={philosophers} traditionMatches={traditions} form={session.form} answered={administered.filter(i=>Boolean(session.answers[i.item_id])).length} total={administered.length} onBack={()=>setView('quiz')} onReset={reset}/>
   }
   return null
 }

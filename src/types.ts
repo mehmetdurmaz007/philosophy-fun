@@ -44,9 +44,10 @@ export interface AnswerRecord {
 }
 
 export interface SessionState {
-  version: 1
+  version: 2
   form: FormId
   modules: string[]
+  skippedModules: string[]
   seed: string
   order: string[]
   cursor: number
@@ -178,6 +179,7 @@ export interface PhilosopherMatch {
   label: string
   period: string
   W: ComponentMatch
+  R: ComponentMatch
   P: ComponentMatch
   M: ComponentMatch
   rankingIndex: number
@@ -188,6 +190,7 @@ export interface TraditionMatch {
   family: string
   scopeNote: string
   W: ComponentMatch
+  R: ComponentMatch
   P: ComponentMatch
   M: ComponentMatch
   rankingIndex: number
