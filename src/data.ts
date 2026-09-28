@@ -18,9 +18,9 @@ async function fetchSegmentedGzipJson<T>(stem: string, count: number): Promise<T
 
 export async function loadAppData() {
   const [questionnaire, philosophers, traditions] = await Promise.all([
-    fetchSegmentedGzipJson<QuestionnaireData>('questionnaire', 4),
-    fetchSegmentedGzipJson<PhilosopherData>('philosophers', 3),
-    fetchSegmentedGzipJson<TraditionData>('traditions', 4)
+    fetchSegmentedGzipJson<QuestionnaireData>('questionnaire-v2', 8),
+    fetchSegmentedGzipJson<PhilosopherData>('philosophers-v2', 8),
+    fetchSegmentedGzipJson<TraditionData>('traditions-v2', 10)
   ])
   return { questionnaire, philosophers, traditions }
 }
