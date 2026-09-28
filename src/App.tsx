@@ -34,7 +34,15 @@ export default function App(){
     const defaultModules=Object.entries(data.questionnaire.optional_modules).filter(([,m])=>m.default_in.includes(form)).map(([id])=>id)
     const seed=`${Date.now()}-${Math.random().toString(36).slice(2)}`
     const chosen=availableItems(data.questionnaire,form,defaultModules)
-    const next:SessionState={version:2,form,modules:defaultModules,skippedModules:[],seed,order:interleavedOrder(chosen,seed),cursor:0,answers:{},startedAt:new Date().toISOString()}
+    const answers=session?.answers??{}
+    const order=interleavedOrder(chosen,seed)
+    const firstUnanswered=order.findIndex(id=>!answers[id])
+    const next:SessionState={
+      version:2,form,modules:defaultModules,skippedModules:[],seed,order,
+      cursor:firstUnanswered>=0?firstUnanswered:Math.max(0,order.length-1),
+      answers,
+      startedAt:session?.form===form?session.startedAt:new Date().toISOString()
+    }
     setSession(next); setView('quiz')
   }
   function setModules(form:FormId,modules:string[],skippedModules:string[]){
@@ -68,10 +76,12 @@ export default function App(){
   if(!data)return <main className="shell"><div className="panel"><p>Loading the philosophy map…</p></div></main>
 
   if(view==='home'){
-    const resume=session&&Object.keys(session.answers).length>0
+    const resumeItems=session?availableItems(data.questionnaire,session.form,session.modules):[]
+    const resumeCount=session?resumeItems.filter(i=>Boolean(session.answers[i.item_id])).length:0
+    const resume=session&&resumeCount>0
     return <main className="shell">
       <header className="hero"><div className="eyebrow">PRE-PILOT ALPHA · QUESTIONNAIRE v0.2</div><h1>Philosophy Fun</h1><p className="lede">Map your philosophical worldview across independent dimensions, then compare it with philosophers and traditions without collapsing everything into one ideology score.</p></header>
-      {resume&&<section className="resume panel"><div><strong>Resume {session.form.toLowerCase()} form</strong><p>{Object.keys(session.answers).length} responses saved locally.</p></div><button className="primary" onClick={()=>setView('quiz')}>Resume</button></section>}
+      {resume&&<section className="resume panel"><div><strong>Resume {session.form.toLowerCase()} form</strong><p>{resumeCount} responses saved for this form; shared item IDs are reused if you switch forms.</p></div><button className="primary" onClick={()=>setView('quiz')}>Resume</button></section>}
       <section className="form-grid">{FORM_ORDER.map(form=>{const f=data.questionnaire.forms[form];return <article className="form-card" key={form}><div className="form-top"><span>{form}</span><strong>{f.core_item_count}</strong></div><h2>{form==='QUICK'?'Fast map':form==='STANDARD'?'Main test':form==='COMPLETE'?'Full core':'Everything'}</h2><p>{f.purpose}</p><small>{f.estimated_scope}</small><button className="primary" onClick={()=>begin(form)}>Start {form.toLowerCase()}</button></article>})}</section>
       <p className="fineprint">Scores are pre-pilot research estimates, not psychometric diagnoses. Missing or inapplicable dimensions are never treated as disagreement.</p>
     </main>

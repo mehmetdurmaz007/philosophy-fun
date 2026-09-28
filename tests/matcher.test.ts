@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { matchPhilosopher } from '../src/matcher'
+import { matchPhilosopher, sensitivityRank } from '../src/matcher'
 import type { PhilosopherProfile, UserScores } from '../src/types'
 
 const user:UserScores={
@@ -78,5 +78,27 @@ describe('categorical vector matching',()=>{
     const m=matchPhilosopher(categoricalUser,categoricalProfile({A:70,B:70,C:70}))
     expect(m.P.raw).toBeNull()
     expect(m.P.compared).toBe(0)
+  })
+})
+
+
+describe('retrieval sensitivity ordering',()=>{
+  const c=(adjusted:number)=>({raw:adjusted,adjusted,evidence:1,compared:4,thin:false})
+  it('prefers a match that stays strong across plausible W/P/M weightings',()=>{
+    const ranked=sensitivityRank([
+      {id:'W-specialist',W:c(100),P:c(40),M:c(40),rankingIndex:0},
+      {id:'P-specialist',W:c(40),P:c(100),M:c(40),rankingIndex:0},
+      {id:'M-specialist',W:c(40),P:c(40),M:c(100),rankingIndex:0},
+      {id:'balanced',W:c(75),P:c(75),M:c(75),rankingIndex:0}
+    ])
+    expect(ranked[0].id).toBe('balanced')
+  })
+
+  it('keeps exact ties tied rather than inventing an input-order advantage',()=>{
+    const ranked=sensitivityRank([
+      {id:'b',W:c(60),P:c(60),M:c(60),rankingIndex:0},
+      {id:'a',W:c(60),P:c(60),M:c(60),rankingIndex:0}
+    ])
+    expect(ranked[0].rankingIndex).toBe(ranked[1].rankingIndex)
   })
 })

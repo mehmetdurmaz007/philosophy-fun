@@ -6,6 +6,35 @@ const TRAD_PRIORS = { W: 85.49, R: 80.00, P: 76.95, M: 80.50 }
 const statusFactor = (s: string) => s === 'SCORABLE' ? 1 : s === 'PROVISIONAL' ? .6 : 0
 const clamp = (x: number, lo=0, hi=100) => Math.max(lo, Math.min(hi, x))
 
+export const RETRIEVAL_WEIGHTINGS = [
+  {W:1/3,P:1/3,M:1/3},
+  {W:.50,P:.25,M:.25},
+  {W:.25,P:.50,M:.25},
+  {W:.25,P:.25,M:.50},
+  {W:.60,P:.20,M:.20},
+  {W:.20,P:.60,M:.20},
+  {W:.20,P:.20,M:.60}
+] as const
+
+export function sensitivityRank<T extends {id:string;W:ComponentMatch;P:ComponentMatch;M:ComponentMatch;rankingIndex:number}>(matches:T[]):T[]{
+  if(matches.length<=1)return matches
+  const totals=new Map<string,number>(matches.map(m=>[m.id,0]))
+  for(const weights of RETRIEVAL_WEIGHTINGS){
+    const scored=matches.map(m=>({m,score:weights.W*m.W.adjusted+weights.P*m.P.adjusted+weights.M*m.M.adjusted})).sort((a,b)=>b.score-a.score||a.m.id.localeCompare(b.m.id))
+    let i=0
+    while(i<scored.length){
+      let j=i+1
+      while(j<scored.length&&Math.abs(scored[j].score-scored[i].score)<1e-9)j++
+      const averageRank=(i+j-1)/2
+      const percentile=scored.length===1?100:100*(scored.length-1-averageRank)/(scored.length-1)
+      for(let k=i;k<j;k++)totals.set(scored[k].m.id,(totals.get(scored[k].m.id)??0)+percentile)
+      i=j
+    }
+  }
+  const ranked=matches.map(m=>({...m,rankingIndex:(totals.get(m.id)??0)/RETRIEVAL_WEIGHTINGS.length}))
+  return ranked.sort((a,b)=>b.rankingIndex-a.rankingIndex||((b.W.evidence+b.P.evidence+b.M.evidence)-(a.W.evidence+a.P.evidence+a.M.evidence))||a.id.localeCompare(b.id))
+}
+
 function finalize(rawNumer:number, rawDenom:number, evidenceNumer:number, evidenceDenom:number, prior:number, compared:number, thinCutoff:number):ComponentMatch{
   const raw=rawDenom>0?rawNumer/rawDenom:null
   const evidence=evidenceDenom>0?clamp(evidenceNumer/evidenceDenom,0,1):0
@@ -84,7 +113,7 @@ export function matchPhilosopher(user:UserScores,p:PhilosopherProfile):Philosoph
 }
 
 export function rankPhilosophers(user:UserScores,profiles:PhilosopherProfile[]){
-  return profiles.map(p=>matchPhilosopher(user,p)).sort((a,b)=>b.rankingIndex-a.rankingIndex)
+  return sensitivityRank(profiles.map(p=>matchPhilosopher(user,p)))
 }
 
 function intervalSim(u:number,i:TraditionInterval){
@@ -159,14 +188,14 @@ function matchTradShape(user:UserScores,shape:TraditionProfileShape){
 
 export function matchTradition(user:UserScores,t:Tradition):TraditionMatch{
   const common=matchTradShape(user,t)
-  let ranking=common.ranking,closestStrand:string|undefined
+  let closestStrand:string|undefined
   if(t.structure==='MULTISTRAND'&&t.strands?.length){
     const strandScores=t.strands.map(s=>({name:s.name,match:matchTradShape(user,s)})).sort((a,b)=>b.match.ranking-a.match.ranking)
-    if(strandScores[0]){closestStrand=strandScores[0].name;ranking=.45*common.ranking+.55*strandScores[0].match.ranking}
+    if(strandScores[0])closestStrand=strandScores[0].name
   }
-  return {id:t.id,name:t.name,family:t.family,scopeNote:t.scope_note,W:common.W,R:common.R,P:common.P,M:common.M,rankingIndex:ranking,closestStrand,breadth:t.breadth_summary.mean_interval_width}
+  return {id:t.id,name:t.name,family:t.family,scopeNote:t.scope_note,W:common.W,R:common.R,P:common.P,M:common.M,rankingIndex:common.ranking,closestStrand,breadth:t.breadth_summary.mean_interval_width}
 }
 
 export function rankTraditions(user:UserScores,traditions:Tradition[]){
-  return traditions.map(t=>matchTradition(user,t)).sort((a,b)=>b.rankingIndex-a.rankingIndex)
+  return sensitivityRank(traditions.map(t=>matchTradition(user,t)))
 }

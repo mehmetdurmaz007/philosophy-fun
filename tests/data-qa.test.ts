@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { gunzipSync } from 'node:zlib'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { DATA_FILES } from '../src/data'
 
 function read(files: readonly string[]){
@@ -9,6 +9,11 @@ function read(files: readonly string[]){
 }
 
 describe('frozen runtime data plumbing',()=>{
+  it('ships only runtime payload fragments referenced by the loader',()=>{
+    const onDisk=readdirSync('public/data/runtime').filter(x=>x.endsWith('.b64')).sort()
+    const referenced=[...DATA_FILES.questionnaire,...DATA_FILES.philosophers,...DATA_FILES.traditions].sort()
+    expect(onDisk).toEqual(referenced)
+  })
   it('ships Questionnaire v0.2 with the frozen nested form counts',()=>{
     const q=read(DATA_FILES.questionnaire)
     expect(q.items).toHaveLength(291)
