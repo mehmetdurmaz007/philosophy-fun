@@ -6,19 +6,11 @@ import { scoreSession } from './scoring'
 import { rankPhilosophers, rankTraditions } from './matcher'
 import { clearSession, loadSession, saveSession } from './storage'
 import Results from './Results'
+import { FORM_ORDER, availableItems, formRank } from './forms'
 import './styles.css'
 
-const FORM_ORDER:FormId[]=['QUICK','STANDARD','COMPLETE','ADVANCED']
 const AGREE_OPTIONS=[['Strongly disagree',0],['Disagree',25],['Neither agree nor disagree',50],['Agree',75],['Strongly agree',100]] as const
 const METHOD_OPTIONS=[['Not useful',0],['Occasionally useful',25],['Important',50],['Very important',75],['Indispensable',100]] as const
-const formRank=(x:FormId)=>FORM_ORDER.indexOf(x)
-
-function availableItems(q:QuestionnaireData,form:FormId,modules:string[]){
-  const coreKey=`${form.toLowerCase()}_core` as 'quick_core'
-  const optionals=new Set(Object.keys(q.optional_modules))
-  return q.items.filter(i=> modules.includes(i.construct_id) || (!optionals.has(i.construct_id) && Boolean(i[coreKey])))
-}
-
 function responseOptions(item:QuestionnaireItem){return item.layer==='method_profile'?METHOD_OPTIONS:AGREE_OPTIONS}
 
 export default function App(){
