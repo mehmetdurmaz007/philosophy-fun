@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { matchPhilosopher, sensitivityRank } from '../src/matcher'
-import type { PhilosopherProfile, UserScores } from '../src/types'
+import { matchPhilosopher, matchTradition, sensitivityRank } from '../src/matcher'
+import type { PhilosopherProfile, Tradition, UserScores } from '../src/types'
 
 const user:UserScores={
   continuous:{
@@ -100,5 +100,31 @@ describe('retrieval sensitivity ordering',()=>{
       {id:'a',W:c(60),P:c(60),M:c(60),rankingIndex:0}
     ])
     expect(ranked[0].rankingIndex).toBe(ranked[1].rankingIndex)
+  })
+})
+
+
+describe('multistrand sensitivity selection',()=>{
+  const interval=(score:number)=>({status:'SETTLED' as const,center:score,core_range:[score,score] as [number,number],breadth:0,confidence:1})
+  it('uses sensitivity-tested common channels to select the closest strand',()=>{
+    const u:UserScores={
+      continuous:{
+        W_MORAL_OBJECTIVITY:{kind:'continuous',constructId:'W_MORAL_OBJECTIVITY',name:'',score:100,status:'SCORABLE',answered:4,administered:4,highPole:'',lowPole:'',highLabel:'',lowLabel:''}
+      },
+      categorical:{},
+      methods:{
+        TEST_METHOD:{method:'TEST_METHOD',score:100,status:'SCORABLE',answered:4,administered:4}
+      }
+    }
+    const t={
+      id:'T',name:'T',family:'test',scope_note:'',structure:'MULTISTRAND',
+      W:{moral_objectivity:interval(75)},R:{},P:{},M:{TEST_METHOD:interval(75)},
+      strands:[
+        {id:'specialist',name:'Single-channel specialist',members:[],W:{moral_objectivity:interval(100)},R:{},P:{},M:{TEST_METHOD:interval(40)}},
+        {id:'balanced',name:'Balanced strand',members:[],W:{moral_objectivity:interval(75)},R:{},P:{},M:{TEST_METHOD:interval(75)}}
+      ],
+      breadth_summary:{mean_interval_width:0,scored_interval_count:2}
+    } as unknown as Tradition
+    expect(matchTradition(u,t).closestStrand).toBe('Balanced strand')
   })
 })

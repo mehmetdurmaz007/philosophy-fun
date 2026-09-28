@@ -190,8 +190,12 @@ export function matchTradition(user:UserScores,t:Tradition):TraditionMatch{
   const common=matchTradShape(user,t)
   let closestStrand:string|undefined
   if(t.structure==='MULTISTRAND'&&t.strands?.length){
-    const strandScores=t.strands.map(s=>({name:s.name,match:matchTradShape(user,s)})).sort((a,b)=>b.match.ranking-a.match.ranking)
-    if(strandScores[0])closestStrand=strandScores[0].name
+    const strandScores=t.strands.map(strand=>{
+      const match=matchTradShape(user,strand)
+      return {id:strand.id,name:strand.name,W:match.W,P:match.P,M:match.M,rankingIndex:match.ranking}
+    })
+    const rankedStrands=sensitivityRank(strandScores)
+    if(rankedStrands[0])closestStrand=rankedStrands[0].name
   }
   return {id:t.id,name:t.name,family:t.family,scopeNote:t.scope_note,W:common.W,R:common.R,P:common.P,M:common.M,rankingIndex:common.ranking,closestStrand,breadth:t.breadth_summary.mean_interval_width}
 }
